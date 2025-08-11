@@ -1,1 +1,276 @@
-test
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ShrinkPDF — Demo PDF Compressor</title>
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1220; --card:#0f1a2a; --accent:#60c6ff; --accent-2:#7ee8a8; --muted:#95a3b3;
+    font-family: 'Inter', system-ui, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#061025 0%, #071427 100%); color:#e6f0f7; padding:28px; }
+  .container{ width:980px; max-width:100%; border-radius:14px; padding:22px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); display:grid; grid-template-columns:1fr 340px; gap:18px; box-shadow: 0 10px 40px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.03);}
+  .left{ background:var(--card); padding:18px; border-radius:12px; }
+  .right{ background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); padding:16px; border-radius:12px; min-height:220px; border:1px solid rgba(255,255,255,0.02) }
+
+  header.logo{ display:flex; gap:12px; align-items:center; margin-bottom:12px }
+  .brand-mark{ width:44px; height:44px; display:inline-grid; place-items:center; border-radius:9px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#052033; font-weight:800; font-size:18px }
+  h1{ margin:0; font-size:20px; letter-spacing:0.2px}
+  p.lead{ margin:4px 0 0; color:var(--muted); font-size:13px }
+
+  .dropzone{ margin-top:12px; padding:28px; border-radius:10px; background:rgba(255,255,255,0.02); border:2px dashed rgba(96,198,255,0.06); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; cursor:pointer; transition:all .16s ease }
+  .dropzone.drag{ background: linear-gradient(180deg, rgba(96,198,255,0.03), rgba(126,232,168,0.02)); transform:translateY(-3px); border-color: rgba(96,198,255,0.18) }
+  .dropzone svg{ width:56px; height:56px; color:var(--accent) }
+
+  .controls{ margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+  .select, .btn, .ghost{ border-radius:10px; padding:10px 12px; font-weight:600; cursor:pointer; border:none }
+  .select{ background:#071428; color:var(--muted); border:1px solid rgba(255,255,255,0.02) }
+  .btn{ background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:#052033; }
+  .ghost{ background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--muted) }
+
+  .file-list{ margin-top:14px; display:flex; flex-direction:column; gap:8px }
+  .file-item{ display:flex; justify-content:space-between; gap:8px; align-items:center; padding:10px; border-radius:10px; background: rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.02); font-size:14px }
+  .meta{ color:var(--muted); font-size:12px }
+
+  .progress{ height:10px; background: rgba(255,255,255,0.03); border-radius:999px; overflow:hidden; margin-top:12px }
+  .progress > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent), var(--accent-2)); transition: width .22s linear }
+
+  .stat { display:flex; gap:12px; justify-content:space-between; align-items:center; margin-top:8px }
+  .stat strong{ font-size:18px }
+  .result .file-item a { text-decoration:none; color:#052033; background:linear-gradient(90deg,#34d399,#60a5fa); padding:8px 10px; border-radius:8px; font-weight:700 }
+
+  footer{ grid-column:1 / -1; margin-top:12px; color:var(--muted); font-size:12px; text-align:center }
+
+  @media (max-width:900px){
+    .container{ grid-template-columns: 1fr; padding:14px }
+    .right{ order:2 }
+  }
+</style>
+</head>
+<body>
+  <div class="container" role="main" aria-labelledby="title">
+    <div class="left">
+      <header class="logo" aria-hidden="false">
+        <div class="brand-mark">SP</div>
+        <div>
+          <h1 id="title">ShrinkPDF</h1>
+          <p class="lead">Demo — compress your PDFs quickly (simulation). Real compression available in final build.</p>
+        </div>
+      </header>
+
+      <div id="drop" class="dropzone" tabindex="0" aria-label="Drop PDF files here or click to select">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 5 17 10"/><line x1="12" y1="5" x2="12" y2="19"/></svg>
+        <div style="text-align:center">
+          <div style="font-weight:700">Drop PDF files here</div>
+          <div class="meta" style="margin-top:6px">or click to browse — demo will simulate compression</div>
+        </div>
+        <input id="fileInput" type="file" accept="application/pdf" style="display:none" multiple>
+      </div>
+
+      <div class="controls" aria-hidden="false">
+        <select id="quality" class="select" aria-label="Compression quality">
+          <option value="screen">Small (fast)</option>
+          <option value="ebook" selected>Balanced</option>
+          <option value="printer">High quality</option>
+        </select>
+
+        <button id="compressBtn" class="btn">Compress (demo)</button>
+        <button id="clearBtn" class="ghost">Clear</button>
+      </div>
+
+      <div class="file-list" id="fileList" aria-live="polite"></div>
+
+      <div class="progress" aria-hidden="true">
+        <i id="progBar" style="width:0%"></i>
+      </div>
+    </div>
+
+    <aside class="right">
+      <div>
+        <strong>Status</strong>
+        <div class="meta" id="status" style="margin-top:6px">No files selected</div>
+      </div>
+
+      <div class="result" id="results" style="margin-top:12px"></div>
+
+      <div class="stat" style="margin-top:14px">
+        <div>
+          <div class="meta">Total files</div>
+          <strong id="totalFiles">0</strong>
+        </div>
+        <div>
+          <div class="meta">Estimated saved</div>
+          <strong id="saved">0%</strong>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" class="meta">
+        Demo notes: this page simulates compression and provides a downloadable copy named <code>-compressed.pdf</code>.
+      </div>
+    </aside>
+
+    <footer>© ShrinkPDF — Demo UI. Final build will include backend compression and secure deletes.</footer>
+  </div>
+
+<script>
+(() => {
+  // Elements
+  const drop = document.getElementById('drop');
+  const fileInput = document.getElementById('fileInput');
+  const fileList = document.getElementById('fileList');
+  const compressBtn = document.getElementById('compressBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const progBar = document.getElementById('progBar');
+  const status = document.getElementById('status');
+  const results = document.getElementById('results');
+  const totalFilesEl = document.getElementById('totalFiles');
+  const savedEl = document.getElementById('saved');
+  const quality = document.getElementById('quality');
+
+  let files = [];
+
+  // Helpers
+  function humanSize(n){
+    if (n === 0) return '0 B';
+    const units = ['B','KB','MB','GB'];
+    const i = Math.floor(Math.log(n)/Math.log(1024));
+    return (n/Math.pow(1024,i)).toFixed(2)+' '+units[i];
+  }
+
+  function renderList(){
+    fileList.innerHTML = '';
+    files.forEach((f, i) => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `<div>
+          <div style="font-weight:600">${f.name}</div>
+          <div class="meta">Size: ${humanSize(f.size)}</div>
+        </div>
+        <div>
+          <button data-index="${i}" class="ghost removeBtn">Remove</button>
+        </div>`;
+      fileList.appendChild(item);
+    });
+    totalFilesEl.textContent = files.length;
+    status.textContent = files.length ? `${files.length} file(s) ready` : 'No files selected';
+  }
+
+  function addFiles(list){
+    const arr = Array.from(list).filter(f => f.type === 'application/pdf');
+    files = files.concat(arr);
+    renderList();
+  }
+
+  // Drag & drop
+  drop.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value=''; });
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+  drop.addEventListener('dragleave', e => { drop.classList.remove('drag'); });
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('drag'); addFiles(e.dataTransfer.files); });
+
+  fileList.addEventListener('click', e => {
+    if (e.target.matches('.removeBtn')){
+      const i = Number(e.target.dataset.index);
+      files.splice(i,1);
+      renderList();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => { files = []; results.innerHTML = ''; progBar.style.width='0%'; savedEl.textContent='0%'; renderList(); });
+
+  // Simulate compression: create downloadable blob with same bytes (demo only)
+  compressBtn.addEventListener('click', async () => {
+    if (!files.length) return alert('Add at least one PDF for demo compression.');
+    compressBtn.disabled = true;
+    results.innerHTML = '';
+    progBar.style.width = '0%';
+    status.textContent = 'Simulating upload & compression...';
+
+    // Estimate ratios
+    const ratios = { screen:0.3, ebook:0.55, printer:0.85 }; // fraction of original size after compression (demo guesses)
+    const ratio = ratios[quality.value] || 0.55;
+
+    let totalBefore = 0;
+    let totalAfter = 0;
+
+    // Simulate sequential processing with progress animation
+    for (let i = 0; i < files.length; i++){
+      const f = files[i];
+      totalBefore += f.size;
+
+      // fake upload + compress progress
+      await animateProgress(0, 60 + Math.random()*15, 700 + Math.random()*600, (p) => progBar.style.width = `${p}%`);
+      status.textContent = `Compressing ${f.name} (${i+1}/${files.length})`;
+
+      // read file bytes (so we can create a downloadable blob)
+      const fileBytes = await fileToArrayBuffer(f);
+
+      // demo compressed size (we're not actually compressing PDF bytes in-browser)
+      const compressedSize = Math.max(1024, Math.floor(f.size * ratio));
+      totalAfter += compressedSize;
+
+      // create "compressed" blob (contains the original bytes — demo behaviour)
+      const outBlob = new Blob([fileBytes], { type: 'application/pdf' });
+      const outName = f.name.replace(/\.pdf$/i, '') + '-compressed.pdf';
+      const url = URL.createObjectURL(outBlob);
+
+      // show single file result
+      const row = document.createElement('div');
+      row.className = 'file-item';
+      row.innerHTML = `<div>
+          <div style="font-weight:600">${outName}</div>
+          <div class="meta">Before: ${humanSize(f.size)} — After (est): ${humanSize(compressedSize)}</div>
+        </div>
+        <div>
+          <a class="download" href="${url}" download="${outName}">Download</a>
+        </div>`;
+      results.appendChild(row);
+
+      // small pause and bump progress
+      await animateProgress(60 + Math.random()*10, 100, 350 + Math.random()*250, (p) => progBar.style.width = `${p}%`);
+      await sleep(220);
+    }
+
+    // show totals
+    const savedPercent = totalBefore ? Math.round(((totalBefore - totalAfter) / totalBefore) * 100) : 0;
+    savedEl.textContent = savedPercent + '%';
+    status.textContent = 'Demo complete — download your files';
+    compressBtn.disabled = false;
+  });
+
+  // Utilities
+  function animateProgress(from, to, duration, onUpdate){
+    return new Promise(resolve => {
+      const start = performance.now();
+      function tick(now){
+        const t = Math.min(1, (now - start) / duration);
+        const val = from + (to - from) * t;
+        onUpdate(Math.round(val));
+        if (t < 1) requestAnimationFrame(tick);
+        else resolve();
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+  function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+  function fileToArrayBuffer(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // Keyboard accessibility
+  drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+})();
+</script>
+</body>
+</html>
+
